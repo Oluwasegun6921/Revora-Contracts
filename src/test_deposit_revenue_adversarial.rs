@@ -90,7 +90,7 @@ fn test_deposit_revenue_contract_frozen_rejected() {
     let safety = Address::generate(&env);
 
     client.initialize(&admin, &Some(safety), &None::<bool>);
-    client.freeze(&admin);
+    client.freeze();
 
     let res = client.try_deposit_revenue(
         &issuer,
@@ -114,7 +114,7 @@ fn test_deposit_revenue_contract_paused_rejected() {
     let safety = Address::generate(&env);
 
     client.initialize(&admin, &Some(safety), &None::<bool>);
-    client.pause(&admin);
+    client.pause_admin(&admin);
 
     let res = client.try_deposit_revenue(
         &issuer,
@@ -196,8 +196,7 @@ fn test_deposit_revenue_payment_token_mismatch_after_lock() {
     let (other_payment_token, _other_admin) = create_payment_token(&env);
 
     client
-        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &100_000, &1)
-        .unwrap();
+        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &100_000, &1);
 
     let res = client.try_deposit_revenue(
         &issuer,
@@ -281,8 +280,7 @@ fn test_deposit_revenue_duplicate_period_id_rejected() {
     let (env, client, issuer, token, payment_token, contract_id) = setup_offering();
 
     client
-        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &100_000, &1)
-        .unwrap();
+        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &100_000, &1);
 
     let res = client.try_deposit_revenue(
         &issuer,
@@ -304,8 +302,7 @@ fn test_deposit_revenue_gap_period_id_rejected() {
     let (env, client, issuer, token, payment_token, contract_id) = setup_offering();
 
     client
-        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &100_000, &1)
-        .unwrap();
+        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &100_000, &1);
 
     let res = client.try_deposit_revenue(
         &issuer,
@@ -365,16 +362,13 @@ fn test_deposit_revenue_multi_period_sequential_success() {
     let (env, client, issuer, token, payment_token, contract_id) = setup_offering();
 
     client
-        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &10_000, &1)
-        .unwrap();
+        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &10_000, &1);
 
     client
-        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &20_000, &2)
-        .unwrap();
+        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &20_000, &2);
 
     client
-        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &30_000, &3)
-        .unwrap();
+        .deposit_revenue(&issuer, &symbol_short!("def"), &token, &payment_token, &30_000, &3);
 
     assert_eq!(client.get_period_count(&issuer, &symbol_short!("def"), &token), 3);
     assert_eq!(client.get_deposited_revenue(&issuer, &symbol_short!("def"), &token), 60_000);

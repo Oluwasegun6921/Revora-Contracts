@@ -455,7 +455,7 @@ fn unauthorized_callers_cannot_mutate_the_summary_while_reads_stay_open() {
         Err(Ok(RevoraError::NotAuthorized))
     );
     assert_eq!(
-        client.try_set_min_revenue_threshold(&attacker, &issuer, &ns, &token, &0),
+        client.try_set_min_revenue_threshold(&attacker, &ns, &token, &0),
         Err(Ok(RevoraError::OfferingNotFound))
     );
     assert_eq!(
