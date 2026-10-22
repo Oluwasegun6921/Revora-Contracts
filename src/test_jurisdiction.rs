@@ -187,8 +187,8 @@ fn issuer_transfer_migrates_allowed_jurisdictions() {
         &token,
         &soroban_sdk::vec![&env, symbol_short!("us"), symbol_short!("sg")],
     );
-    client.propose_issuer_transfer(&old_issuer, &symbol_short!("def"), &token, &new_issuer, &soroban_sdk::Vec::from_array(&env, [old_issuer.clone()]));
-    client.accept_issuer_transfer(&new_issuer, &symbol_short!("def"), &token);
+    client.propose_issuer_transfer(&old_issuer, &symbol_short!("def"), &token, &new_issuer);
+    client.accept_issuer_transfer(&old_issuer, &new_issuer, &symbol_short!("def"), &token);
 
     assert_eq!(
         client.get_allowed_jurisdictions(&new_issuer, &symbol_short!("def"), &token),
