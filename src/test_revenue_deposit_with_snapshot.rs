@@ -1,4 +1,3 @@
-
 //! Adversarial coverage for `deposit_revenue_with_snapshot` (issue #1133).
 //!
 //! `deposit_revenue_with_snapshot` folds snapshot-reference validation, issuer

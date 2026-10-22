@@ -7,6 +7,11 @@ edition = "2021"
 # Issue #465: Kani bounded verification harness (not enabled in default CI).
 kani = []
 
+# Issue #1356: Testnet-only tooling entrypoints (faucet, indexer fixture, simulation).
+# Off by default — production/release builds exclude these to reduce wasm size and
+# narrow the mainnet attack surface. Enable with `--features testnet`.
+testnet = []
+
 # Issue #1308: exposes the test-only state-mutation helpers
 # (`test_insert_period`, `test_set_last_claimed_idx`) so a non-`cfg(test)` build
 # (e.g. an integration test) can seed accounting state. These helpers mutate a
@@ -42,5 +47,5 @@ codegen-units = 1
 panic = "abort"
 
 [workspace]
-members = ["indexer", "contracts/vesting"]
+members = ["indexer", "contracts/governance", "contracts/vesting"]
 

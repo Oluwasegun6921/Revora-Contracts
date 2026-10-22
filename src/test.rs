@@ -14,13 +14,13 @@ use super::*;
 use crate::revenue_deposit_contract::{
     ContractError, RevenueDepositContract, RevenueDepositContractClient,
 };
+use proptest::prelude::*;
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, Events as _, Ledger},
     token::{Client as TokenClient, StellarAssetClient},
     Address, Env, String as SdkString, Symbol, Vec,
 };
-use proptest::prelude::*;
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -223,20 +223,14 @@ fn claims_distribute_the_full_revenue_including_remainder() {
     let (env, contract_id, _token_id, _admin) = setup();
     let client = RevenueDepositContractClient::new(&env, &contract_id);
     let period_id = client.create_period(&100u32, &200u32, &301i128);
-    let beneficiaries = [
-        Address::generate(&env),
-        Address::generate(&env),
-        Address::generate(&env),
-    ];
+    let beneficiaries = [Address::generate(&env), Address::generate(&env), Address::generate(&env)];
     for beneficiary in &beneficiaries {
         client.add_beneficiary(&period_id, beneficiary);
     }
     env.ledger().set_sequence_number(201);
 
-    let payouts: std::vec::Vec<i128> = beneficiaries
-        .iter()
-        .map(|beneficiary| client.claim(&period_id, beneficiary))
-        .collect();
+    let payouts: std::vec::Vec<i128> =
+        beneficiaries.iter().map(|beneficiary| client.claim(&period_id, beneficiary)).collect();
 
     assert_eq!(payouts.iter().sum::<i128>(), 301);
     assert_eq!(payouts.iter().filter(|payout| **payout == 100).count(), 2);
@@ -6919,13 +6913,8 @@ fn simulate_distribution_rejects_257_holders() {
         shares.push_back((Address::generate(&env), 1u32));
     }
 
-    let result = client.try_simulate_distribution(
-        &issuer,
-        &symbol_short!("def"),
-        &token,
-        &100_000,
-        &shares,
-    );
+    let result =
+        client.try_simulate_distribution(&issuer, &symbol_short!("def"), &token, &100_000, &shares);
     assert!(matches!(result, Err(Ok(RevoraError::LimitReached))));
 }
 
@@ -6948,13 +6937,8 @@ fn simulate_distribution_rejects_duplicate_holders() {
     let holder = Address::generate(&env);
     let shares = Vec::from_array(&env, [(holder.clone(), 6_000u32), (holder, 4_000u32)]);
 
-    let result = client.try_simulate_distribution(
-        &issuer,
-        &symbol_short!("def"),
-        &token,
-        &100_000,
-        &shares,
-    );
+    let result =
+        client.try_simulate_distribution(&issuer, &symbol_short!("def"), &token, &100_000, &shares);
     assert!(matches!(result, Err(Ok(RevoraError::LimitReached))));
 }
 
@@ -8025,7 +8009,8 @@ fn issuer_transfer_default_expiry_used_when_expiry_secs_zero() {
     let seven_days = 7u64 * 24 * 60 * 60;
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + seven_days - 1);
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "should accept within default 7-day window");
 }
 
@@ -8040,7 +8025,8 @@ fn issuer_transfer_default_expiry_rejects_after_seven_days() {
     let seven_days = 7u64 * 24 * 60 * 60;
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + seven_days + 1);
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_err(), "should reject after default 7-day expiry");
 }
 
@@ -8061,7 +8047,8 @@ fn issuer_transfer_custom_expiry_accepted_within_window() {
 
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + 60 * 60); // +1h
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "should accept within custom 2h window");
 }
 
@@ -8082,7 +8069,8 @@ fn issuer_transfer_custom_expiry_rejected_after_window() {
 
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + two_hours + 1);
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_err(), "should reject after custom 2h expiry");
 }
 
@@ -8103,7 +8091,8 @@ fn issuer_transfer_custom_expiry_accepted_at_exact_boundary() {
 
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + two_hours);
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "should accept at exact expiry boundary (timestamp == expiry)");
 }
 
@@ -8124,7 +8113,8 @@ fn issuer_transfer_expiry_below_min_clamped_to_min() {
 
     // Should still be valid at 30 minutes (clamped to 1h minimum)
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + 30 * 60);
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "clamped-to-min expiry should still be valid at 30min");
 }
 
@@ -8147,7 +8137,8 @@ fn issuer_transfer_expiry_above_max_clamped_to_max() {
     let thirty_days_plus_one = 30u64 * 24 * 60 * 60 + 1;
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + thirty_days_plus_one);
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_err(), "clamped-to-max expiry should expire after 30 days");
 }
 
@@ -8169,7 +8160,8 @@ fn issuer_transfer_min_clamp_accept_at_exact_one_hour_boundary() {
     // Accept at exactly 1h (the clamped minimum) — should succeed (inclusive)
     let one_hour = 60u64 * 60;
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + one_hour);
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "min-clamped expiry should accept at exactly 1h boundary");
 }
 
@@ -8191,7 +8183,8 @@ fn issuer_transfer_max_clamp_accept_within_thirty_day_window() {
     // Accept at 15 days — well within the clamped 30-day window
     let fifteen_days = 15u64 * 24 * 60 * 60;
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + fifteen_days);
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "max-clamped expiry should accept within 30-day window");
 }
 
@@ -8216,7 +8209,8 @@ fn replace_issuer_transfer_preserves_custom_expiry() {
 
     // Accept at 1h — should succeed because the 2h expiry was preserved
     env.ledger().with_mut(|li| li.timestamp = li.timestamp + 60 * 60);
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer_2, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer_2, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "replace should preserve original custom expiry");
 }
 
@@ -8347,7 +8341,8 @@ fn issuer_transfer_double_accept_fails() {
     client.accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
 
     // Second accept should fail (no pending transfer)
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_err());
 }
 
@@ -8447,7 +8442,8 @@ fn issuer_transfer_wrong_address_cannot_reject() {
 
     client.propose_issuer_transfer(&issuer, &symbol_short!("def"), &token, &new_issuer);
 
-    let result = client.try_reject_issuer_transfer(&issuer, &wrong_address, &symbol_short!("def"), &token);
+    let result =
+        client.try_reject_issuer_transfer(&issuer, &wrong_address, &symbol_short!("def"), &token);
     assert!(result.is_err());
 }
 
@@ -8456,7 +8452,8 @@ fn issuer_transfer_reject_fails_when_no_pending() {
     let (env, client, issuer, token, _payment_token, _contract_id) = claim_setup();
     let new_issuer = Address::generate(&env);
 
-    let result = client.try_reject_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_reject_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_err());
 }
 
@@ -9343,7 +9340,8 @@ fn issuer_transfer_accept_blocked_when_frozen() {
     client.set_admin(&admin);
     client.freeze();
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_err());
 }
 
@@ -9781,7 +9779,8 @@ fn issuer_transfer_rejects_pre_cliff_vesting_schedule() {
 
     env.ledger().with_mut(|li| li.timestamp = 1_500);
 
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert_eq!(result, Err(Ok(RevoraError::VestingTransferBlocked)));
 }
 
@@ -9826,7 +9825,8 @@ fn issuer_transfer_accept_at_exact_expiry_boundary_succeeds() {
     env.ledger().with_mut(|li| li.timestamp = 1000 + expiry_secs);
 
     // Accept should succeed at exact boundary
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert!(result.is_ok(), "Accept should succeed at exact expiry boundary");
 
     // Verify transfer completed
@@ -9852,7 +9852,8 @@ fn issuer_transfer_accept_one_second_past_expiry_fails() {
     env.ledger().with_mut(|li| li.timestamp = 1000 + expiry_secs + 1);
 
     // Accept should fail with IssuerTransferExpired
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
     assert_eq!(
         result,
         Err(Ok(RevoraError::IssuerTransferExpired)),
@@ -9900,11 +9901,9 @@ fn issuer_transfer_expiry_handles_timestamp_overflow_safely() {
 
     // Accept should succeed because saturating_add(EXPIRY) saturates at u64::MAX,
     // and current_timestamp (near_max + 500) is not > u64::MAX
-    let result = client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
-    assert!(
-        result.is_ok(),
-        "Accept should succeed when saturating_add prevents overflow"
-    );
+    let result =
+        client.try_accept_issuer_transfer(&issuer, &new_issuer, &symbol_short!("def"), &token);
+    assert!(result.is_ok(), "Accept should succeed when saturating_add prevents overflow");
 
     // Verify transfer completed
     assert_eq!(client.get_pending_issuer_transfer(&issuer, &symbol_short!("def"), &token), None);
@@ -9927,10 +9926,7 @@ fn issuer_transfer_self_transfer_ignores_expiry() {
 
     // Accept should succeed because self-transfer short-circuits before expiry check
     let result = client.try_accept_issuer_transfer(&issuer, &issuer, &symbol_short!("def"), &token);
-    assert!(
-        result.is_ok(),
-        "Self-transfer should succeed regardless of expiry"
-    );
+    assert!(result.is_ok(), "Self-transfer should succeed regardless of expiry");
 
     // Verify transfer cleared
     assert_eq!(client.get_pending_issuer_transfer(&issuer, &symbol_short!("def"), &token), None);
@@ -14297,37 +14293,6 @@ mod regression {
             &payout,
             &0,
             &symbol_short!(""),
-            &0);
-        client.propose_issuer_transfer(&old_issuer, &symbol_short!("def"), &token, &new_issuer);
-        client.accept_issuer_transfer(&old_issuer, &new_issuer, &symbol_short!("def"), &token);
-
-        // New issuer can look up the offering directly
-        let result = client.get_offering(&new_issuer, &symbol_short!("def"), &token);
-        assert!(result.is_some());
-        assert_eq!(result.unwrap().token, token);
-    }
-
-    #[test]
-    fn regression_issue_360_get_offering_unknown_returns_none() {
-        let env = Env::default();
-        env.mock_all_auths();
-        let client = make_client(&env.clone());
-        let issuer = Address::generate(&env);
-        let token = Address::generate(&env);
-
-        let result = client.get_offering(&issuer, &symbol_short!("def"), &token);
-        assert!(result.is_none());
-    }
-}
-
-        client.register_offering(
-            &old_issuer,
-            &Vec::new(&env),
-            &1u32,
-            &symbol_short!("def"),
-            &token,
-            &300,
-            &payout,
             &0,
         );
         client.propose_issuer_transfer(&old_issuer, &symbol_short!("def"), &token, &new_issuer);

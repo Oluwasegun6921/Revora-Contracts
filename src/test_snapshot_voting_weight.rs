@@ -334,8 +334,14 @@ fn late_buyer_has_zero_voting_weight() {
     );
 
     // holder_b was not in snapshot 1 → weight is 0 → Err(NoVotingWeight).
-    let result =
-        client.try_cast_vote(&issuer, &symbol_short!("def"), &token, &proposal_id, &holder_b, &true);
+    let result = client.try_cast_vote(
+        &issuer,
+        &symbol_short!("def"),
+        &token,
+        &proposal_id,
+        &holder_b,
+        &true,
+    );
     assert_eq!(result, Err(Ok(RevoraError::NoVotingWeight)));
 
     let proposal: GovProposalEntry =
@@ -651,12 +657,12 @@ fn finalize_lifecycle_and_event() {
     env.ledger().set_timestamp(env.ledger().timestamp() + voting_window);
 
     // Anyone can finalize.
-    let passed =
-        client.finalize_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id);
+    let passed = client.finalize_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id);
     assert!(passed, "proposal should pass since yes >= no and total >= quorum");
 
     // Check stored state.
-    let prop = client.get_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id).unwrap();
+    let prop =
+        client.get_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id).unwrap();
     assert!(!prop.open, "proposal must be closed");
     assert!(prop.passed, "proposal passed must be true");
 
@@ -682,14 +688,7 @@ fn zero_weight_voter_rejected_with_no_voting_weight() {
 
     let voter_with_share = Address::generate(&env);
     let zero_weight_voter = Address::generate(&env);
-    commit_and_apply(
-        &env,
-        &client,
-        &issuer,
-        &token,
-        1,
-        &[(voter_with_share.clone(), 5_000)],
-    );
+    commit_and_apply(&env, &client, &issuer, &token, 1, &[(voter_with_share.clone(), 5_000)]);
 
     let proposal_id = client.create_gov_proposal(
         &issuer,
@@ -739,11 +738,11 @@ fn quorum_not_met_results_in_passed_false() {
     // Advance past deadline.
     env.ledger().set_timestamp(env.ledger().timestamp() + voting_window + 1);
 
-    let passed =
-        client.finalize_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id);
+    let passed = client.finalize_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id);
     assert!(!passed, "proposal must not pass when quorum is not met");
 
-    let prop = client.get_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id).unwrap();
+    let prop =
+        client.get_gov_proposal(&issuer, &symbol_short!("def"), &token, &proposal_id).unwrap();
     assert!(!prop.open);
     assert!(!prop.passed, "stored outcome passed must be false");
 }

@@ -1892,7 +1892,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "revora-vesting"
+name = "revora-governance"
 version = "0.1.0"
 dependencies = [
  "soroban-sdk",
@@ -1914,6 +1914,13 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "revora-vesting"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
 ]
 
 [[package]]

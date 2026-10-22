@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractclient, contracterror, contractimpl, contracttype, symbol_short,
-    xdr::ToXdr, Address, Bytes, BytesN, Env, Symbol, Vec,
+    contract, contractclient, contracterror, contractimpl, contracttype, symbol_short, xdr::ToXdr,
+    Address, Bytes, BytesN, Env, Symbol, Vec,
 };
 
 // ── Cross-Contract Client Interface for Core ─────────────────────────────────
@@ -33,12 +33,7 @@ pub trait CoreContractInterface {
         holder: Address,
     ) -> u32;
 
-    fn get_issuer(
-        env: Env,
-        issuer: Address,
-        namespace: Symbol,
-        token: Address,
-    ) -> Option<Address>;
+    fn get_issuer(env: Env, issuer: Address, namespace: Symbol, token: Address) -> Option<Address>;
 
     fn is_frozen(env: Env) -> bool;
     fn is_paused(env: Env) -> bool;
@@ -243,7 +238,11 @@ pub struct RevoraGovernance;
 #[contractimpl]
 impl RevoraGovernance {
     /// Initialize the governance contract with an admin and the core contract address.
-    pub fn initialize(env: Env, admin: Address, core_contract: Address) -> Result<(), GovernanceError> {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        core_contract: Address,
+    ) -> Result<(), GovernanceError> {
         admin.require_auth();
         if env.storage().persistent().has(&DataKey::Admin) {
             return Err(GovernanceError::LimitReached);
@@ -271,7 +270,11 @@ impl RevoraGovernance {
     }
 
     /// Set individual voter weight in basis points (admin or multisig).
-    pub fn set_voter_weight(env: Env, voter: Address, weight_bps: u32) -> Result<(), GovernanceError> {
+    pub fn set_voter_weight(
+        env: Env,
+        voter: Address,
+        weight_bps: u32,
+    ) -> Result<(), GovernanceError> {
         let admin: Address = env
             .storage()
             .persistent()

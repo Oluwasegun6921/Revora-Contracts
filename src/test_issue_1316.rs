@@ -8,25 +8,16 @@
 
 use crate::{RevoraError, RevoraRevenueShare, RevoraRevenueShareClient, SignedFxQuote};
 use ed25519_dalek::Signer as _;
-use soroban_sdk::{
-    xdr::ToXdr,
-    testutils::Address as _,
-    Address, Bytes, BytesN, Env, Symbol, Vec,
-};
+use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, BytesN, Env, Symbol, Vec};
 
 fn make_client(env: &Env) -> RevoraRevenueShareClient<'static> {
     let id = env.register_contract(None, RevoraRevenueShare);
     RevoraRevenueShareClient::new(env, &id)
 }
 
-fn setup(env: &Env) -> (
-    RevoraRevenueShareClient<'static>,
-    Address,
-    Symbol,
-    Address,
-    Address,
-    Address,
-) {
+fn setup(
+    env: &Env,
+) -> (RevoraRevenueShareClient<'static>, Address, Symbol, Address, Address, Address) {
     env.mock_all_auths();
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000);
 
@@ -56,8 +47,9 @@ fn setup(env: &Env) -> (
 fn fixed_signing_key() -> ed25519_dalek::SigningKey {
     // Fixed seed for deterministic, reproducible tests.
     ed25519_dalek::SigningKey::from_bytes(&[
-        0x5a, 0xcc, 0x72, 0x53, 0x29, 0x5d, 0xfc, 0x35, 0x6c, 0x04, 0x62, 0x97, 0x92, 0x5a, 0x36, 0x9f,
-        0x3d, 0x27, 0x62, 0xd0, 0x0a, 0xfd, 0xf2, 0x58, 0x3e, 0xcb, 0xe9, 0x21, 0x80, 0xb0, 0x7c, 0x37,
+        0x5a, 0xcc, 0x72, 0x53, 0x29, 0x5d, 0xfc, 0x35, 0x6c, 0x04, 0x62, 0x97, 0x92, 0x5a, 0x36,
+        0x9f, 0x3d, 0x27, 0x62, 0xd0, 0x0a, 0xfd, 0xf2, 0x58, 0x3e, 0xcb, 0xe9, 0x21, 0x80, 0xb0,
+        0x7c, 0x37,
     ])
 }
 
@@ -307,11 +299,7 @@ fn signed_quote_zero_rate_rejected() {
         &quote_bytes,
         &signature,
     );
-    assert_eq!(
-        result,
-        Err(Ok(RevoraError::InvalidAmount)),
-        "zero rate must be rejected"
-    );
+    assert_eq!(result, Err(Ok(RevoraError::InvalidAmount)), "zero rate must be rejected");
 }
 
 #[test]
@@ -351,11 +339,7 @@ fn signed_quote_negative_rate_rejected() {
         &quote_bytes,
         &signature,
     );
-    assert_eq!(
-        result,
-        Err(Ok(RevoraError::InvalidAmount)),
-        "negative rate must be rejected"
-    );
+    assert_eq!(result, Err(Ok(RevoraError::InvalidAmount)), "negative rate must be rejected");
 }
 
 // ── Section E: future timestamp ───

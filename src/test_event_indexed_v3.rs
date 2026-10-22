@@ -73,14 +73,7 @@ fn commit_snapshot_with_holders(
         client.set_holder_share(issuer, ns, token, addr, bps, &1);
         vec.push_back((addr.clone(), *bps));
     }
-    client.apply_snapshot_shares(
-        issuer,
-        ns,
-        token,
-        &snapshot_ref,
-        &0u32,
-        &vec,
-    );
+    client.apply_snapshot_shares(issuer, ns, token, &snapshot_ref, &0u32, &vec);
     snapshot_ref
 }
 
@@ -222,14 +215,8 @@ fn vote_v3_dual_emit_v2_and_v3() {
     let voter = Address::generate(&env);
 
     commit_snapshot_with_holders(&client, &issuer, &ns, &token, &[(voter.clone(), 1500)]);
-    let proposal_id = client.create_gov_proposal(
-        &issuer,
-        &ns,
-        &token,
-        &symbol_short!("p1"),
-        &1000u32,
-        &86400u64,
-    );
+    let proposal_id =
+        client.create_gov_proposal(&issuer, &ns, &token, &symbol_short!("p1"), &1000u32, &86400u64);
 
     let before = env.events().all().len();
     client.cast_vote(&issuer, &ns, &token, &proposal_id, &voter, &true);
@@ -533,14 +520,8 @@ fn vote_choice_roundtrip_in_event_payload() {
         &token,
         &[(voter_yes.clone(), 1000), (voter_no.clone(), 1000)],
     );
-    let proposal_id = client.create_gov_proposal(
-        &issuer,
-        &ns,
-        &token,
-        &symbol_short!("rt"),
-        &1000u32,
-        &86400u64,
-    );
+    let proposal_id =
+        client.create_gov_proposal(&issuer, &ns, &token, &symbol_short!("rt"), &1000u32, &86400u64);
 
     // Yes vote
     let b1 = env.events().all().len();

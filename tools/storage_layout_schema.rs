@@ -72,6 +72,7 @@ const CORE_LAYOUT: &[StorageLayoutEntry] = storage_layout_entries!("revora_reven
     ("DataKey::PeriodDepositTime(OfferingId, u64)", "u64", "offering+period"),
     ("DataKey::Admin", "Address", "contract"),
     ("DataKey::Frozen", "bool", "contract"),
+    ("DataKey::VestingContract", "Address", "contract"),
     ("DataKey::PendingAdmin", "PendingAdminRotation", "contract"),
     ("DataKey::SnapshotConfig(OfferingId)", "bool", "offering"),
     ("DataKey::LastSnapshotRef(OfferingId)", "u64", "offering"),
@@ -232,7 +233,9 @@ const REVENUE_DEPOSIT_LAYOUT: &[StorageLayoutEntry] = storage_layout_entries!("r
     ("DataKey::PeriodIds", "Vec<u32>", "contract"),
     ("DataKey::Period(u32)", "Period", "period"),
     ("DataKey::Beneficiaries(u32)", "Vec<Address>", "period"),
-    ("DataKey::Claimed(u32, Address)", "bool", "period+holder")
+    ("DataKey::Claimed(u32, Address)", "bool", "period+holder"),
+    ("DataKey::SharePerBeneficiary(u32)", "i128", "period"),
+    ("DataKey::Remainder(u32)", "i128", "period")
 ]);
 
 const VESTING_LAYOUT: &[StorageLayoutEntry] = storage_layout_entries!("vesting_contract", [
@@ -318,7 +321,7 @@ fn collect_source_keys(repo_root: &Path) -> Result<BTreeSet<String>, String> {
         ("src/lib.rs", "FreezeDataKey"),
         ("src/lib.rs", "MigrationDataKey"),
         ("src/revenue_deposit_contract.rs", "DataKey"),
-        ("src/vesting.rs", "VestingKey"),
+        ("contracts/vesting/src/lib.rs", "VestingKey"),
     ];
 
     let mut keys = BTreeSet::new();

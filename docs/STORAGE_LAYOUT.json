@@ -872,6 +872,13 @@
     },
     {
       "module": "revora_revenue_share",
+      "key": "DataKey::GovernanceContract",
+      "value_type": "Address",
+      "ownership": "contract",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
       "key": "DataKey::HolderShare(OfferingId, Address)",
       "value_type": "u32",
       "ownership": "offering+holder",
@@ -1053,9 +1060,37 @@
       "version": 6
     },
     {
+      "module": "revenue_deposit_contract",
+      "key": "DataKey::Remainder(u32)",
+      "value_type": "i128",
+      "ownership": "period",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
+      "key": "DataKey::ReportPeriodCount(OfferingId)",
+      "value_type": "u32",
+      "ownership": "offering",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
+      "key": "DataKey::ReportPeriodEntry(OfferingId, u32)",
+      "value_type": "u64",
+      "ownership": "offering+index",
+      "version": 6
+    },
+    {
       "module": "revora_revenue_share",
       "key": "DataKey::RevenueIndex(OfferingId, u64)",
       "value_type": "i128",
+      "ownership": "offering+period",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
+      "key": "DataKey::RevenueReport(OfferingId, u64)",
+      "value_type": "(i128, u64)",
       "ownership": "offering+period",
       "version": 6
     },
@@ -1078,6 +1113,13 @@
       "key": "DataKey::Safety",
       "value_type": "Address",
       "ownership": "contract",
+      "version": 6
+    },
+    {
+      "module": "revenue_deposit_contract",
+      "key": "DataKey::SharePerBeneficiary(u32)",
+      "value_type": "i128",
+      "ownership": "period",
       "version": 6
     },
     {
@@ -1159,6 +1201,13 @@
     },
     {
       "module": "revora_revenue_share",
+      "key": "DataKey::VestingContract",
+      "value_type": "Address",
+      "ownership": "contract",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
       "key": "DataKey::Whitelist(OfferingId)",
       "value_type": "Vec<Address>",
       "ownership": "offering",
@@ -1169,6 +1218,20 @@
       "key": "DeferredDataKey::DeferredReports(u32)",
       "value_type": "i128",
       "ownership": "period",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
+      "key": "FreezeDataKey::HolderAuthority(OfferingId, Address, FreezeReason)",
+      "value_type": "FreezeAuthority",
+      "ownership": "offering+holder+reason",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
+      "key": "FreezeDataKey::OfferingAuthority(OfferingId)",
+      "value_type": "FreezeAuthority",
+      "ownership": "offering",
       "version": 6
     },
     {

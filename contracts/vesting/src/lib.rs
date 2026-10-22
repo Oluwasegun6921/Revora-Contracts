@@ -12,7 +12,8 @@
 #![allow(dead_code)]
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, token, Address, Env, Symbol, Vec,
+    contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env, Symbol,
+    Vec,
 };
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
