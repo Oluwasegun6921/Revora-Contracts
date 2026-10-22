@@ -69,10 +69,15 @@ pub trait FxOracle {
     fn quote(env: Env, from: Symbol, to: Symbol) -> (i128, u64);
 }
 
-/// Cross-contract client trait for Revora Governance (#1326).
-#[contractclient(name = "GovernanceContractClient")]
-pub trait GovernanceContractInterface {
-    fn is_dispute_freeze_active(env: Env, offering_id: OfferingId) -> bool;
+/// Cross-contract client trait for the separate vesting contract
+/// (`revora-vesting`).  The revenue-share contract does not depend on the
+/// vesting crate (so vesting entry points are not linked into this cdylib);
+/// instead it invokes the configured vesting contract at runtime through this
+/// client.
+#[contractclient(name = "VestingClient")]
+pub trait VestingInterface {
+    /// Returns `true` when `holder` has no vesting schedule or is fully vested.
+    fn is_fully_vested(env: Env, holder: Address) -> bool;
 }
 
 /// A single entry in an oracle fallback chain.
@@ -384,7 +389,6 @@ pub enum RevoraError {
 }
 
 pub mod tax_bucket;
-pub mod vesting;
 
 /// Deterministic Merkle-tree helpers for snapshot finalization.
 ///
@@ -1868,6 +1872,10 @@ pub(crate) enum DataKey {
     OfferingIssuer(OfferingId),
     /// Testnet mode flag.
     TestnetMode,
+    /// Address of the separate vesting contract (`revora-vesting`) used for
+    /// cross-contract vesting checks. Empty means no vesting contract is
+    /// configured and cross-contract vesting checks are skipped.
+    VestingContract(Address),
 
     /// Safety role address for emergency pause (#7).
     Safety,
@@ -4557,6 +4565,32 @@ impl RevoraRevenueShare {
         Ok(())
     }
 
+    /// Configure the address of the separate vesting contract (`revora-vesting`)
+    /// used for cross-contract vesting checks in `convert_class`.  Admin-only.
+    /// Clearing the address (zero address) disables cross-contract vesting
+    /// checks so conversions proceed without consulting a vesting contract.
+    pub fn set_vesting_contract(
+        env: Env,
+        caller: Address,
+        address: Address,
+    ) -> Result<(), RevoraError> {
+        Self::require_not_frozen(&env)?;
+        let admin: Address =
+            env.storage().persistent().get(&DataKey::Admin).ok_or(RevoraError::NotInitialized)?;
+        if caller != admin {
+            return Err(RevoraError::NotAuthorized);
+        }
+        admin.require_auth();
+        env.storage().persistent().set(&DataKey::VestingContract, &address);
+        env.events().publish((symbol_short!("vest_cfg"),), (address.clone(),));
+        Ok(())
+    }
+
+    /// Read-only accessor for the configured vesting contract address.
+    pub fn vesting_contract(env: Env) -> Option<Address> {
+        env.storage().persistent().get(&DataKey::VestingContract)
+    }
+
     /// Read-only accessor for the on-chain storage layout version stamp.
     pub fn storage_layout_version(env: Env) -> Option<u32> {
         env.storage().persistent().get(&DataKey::StorageLayoutVersion)
@@ -4842,39 +4876,14 @@ impl RevoraRevenueShare {
             return Err(RevoraError::LimitReached);
         }
 
-        // Migrate any vesting schedules corresponding to this offering before completing
-        // the issuer transfer. This preserves active schedules under the new issuer key
-        // and prevents orphaned pre-cliff schedules.
-        let vesting_offering_id = vesting::VestingOfferingId {
-            issuer: old_issuer.clone(),
-            token: offering_id.token.clone(),
-        };
-        match vesting::migrate_offering_schedules(
-            &env,
-            &vesting_offering_id,
-            new_issuer.clone(),
-            current_timestamp,
-        ) {
-            Ok(beneficiaries) => {
-                for beneficiary in beneficiaries.iter() {
-                    env.events().publish(
-                        (
-                            EVENT_ISSUER_TRANSFER_VESTING_MIGRATED,
-                            offering_id.namespace.clone(),
-                            offering_id.token.clone(),
-                            beneficiary.clone(),
-                        ),
-                        (old_issuer.clone(), new_issuer.clone()),
-                    );
-                }
-            }
-            Err(vesting::VestingError::SchedulePreCliff) => {
-                return Err(RevoraError::VestingTransferBlocked);
-            }
-            Err(_) => {
-                // If the vesting index is empty or stale, ignore it and continue.
-            }
-        }
+        // Vesting schedules are owned by the separate `revora-vesting` contract
+        // (its own cdylib and address) and are no longer migrated by this
+        // contract during an issuer transfer.  Migration of vesting schedules is
+        // the responsibility of the vesting contract's own migration path; this
+        // keeps the two security domains decoupled.  The issuer transfer itself
+        // completes independently of any vesting state.
+        //
+        // See: https://github.com/RevoraOrg/Revora-Contracts/issues/1357
 
         // Register namespace metadata for the new issuer.
         Self::ensure_issuer_registered(&env, &new_issuer);
@@ -9837,15 +9846,15 @@ impl RevoraRevenueShare {
 
         let offering_id = OfferingId { issuer, namespace, token };
 
-        if let Some(schedule) =
-            env.storage().persistent().get::<_, crate::vesting::VestingSchedule>(
-                &crate::vesting::VestingKey::Schedule(holder.clone()),
-            )
+        // Cross-contract vesting check: a holder with an unvested schedule in the
+        // separate vesting contract cannot convert classes.  When no vesting
+        // contract is configured the check is skipped (no coupling to a vesting
+        // security domain).
+        if let Some(vesting_address) =
+            env.storage().persistent().get::<DataKey, Address>(&DataKey::VestingContract)
         {
-            let vested =
-                crate::vesting::VestingContract::get_vested_amount(env.clone(), holder.clone())
-                    .unwrap_or(0);
-            if schedule.total_amount > vested {
+            let vesting = VestingClient::new(&env, &vesting_address);
+            if !vesting.is_fully_vested(&holder) {
                 return Err(RevoraError::UnvestedConversionBlocked);
             }
         }
@@ -16604,6 +16613,8 @@ mod test_merkle_proof_depth;
 mod test_snapshot_voting_weight;
 #[cfg(test)]
 mod test_storage_layout_version;
+#[cfg(test)]
+mod test_vesting_cross_contract;
 
 #[cfg(test)]
 mod secondary_market_royalty_adversarial_test;

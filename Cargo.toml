@@ -32,6 +32,7 @@ ed25519-dalek = "=2.2.0"
 proptest = "1.6.0"
 serde_json = "1.0"
 soroban-sdk = { version = "21.0.0", features = ["testutils", "alloc"] }
+revora-vesting = { path = "contracts/vesting" }
 
 [profile.release]
 opt-level = "z"
@@ -41,8 +42,5 @@ codegen-units = 1
 panic = "abort"
 
 [workspace]
-members = [
-    "indexer",
-    "contracts/governance",
-]
+members = ["indexer", "contracts/vesting"]
 
