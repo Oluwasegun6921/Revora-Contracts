@@ -48,6 +48,7 @@
 #[cfg(test)]
 extern crate std;
 
+mod revenue_deposit_contract;
 mod safe_math;
 
 use crate::safe_math::SafeMath;
@@ -474,6 +475,9 @@ mod test_utils;
 
 #[cfg(test)]
 mod test_platform_fee_per_asset;
+
+#[cfg(test)]
+mod test;
 #[cfg(test)]
 mod test_revenue_deposit_with_snapshot;
 

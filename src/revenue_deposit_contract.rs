@@ -117,7 +117,7 @@ impl RevenueDepositContract {
             env.storage().persistent().set(&DataKey::AuthorizedOfferings, &offerings);
         }
 
-        env.events().publish(&symbol_short!("dep_allow_add"), &offering);
+        env.events().publish((&symbol_short!("dep_add"),), &offering);
         Ok(())
     }
 
@@ -139,7 +139,7 @@ impl RevenueDepositContract {
         offerings.remove(pos as u32);
         env.storage().persistent().set(&DataKey::AuthorizedOfferings, &offerings);
 
-        env.events().publish(&symbol_short!("dep_allow_rm"), &offering);
+        env.events().publish((&symbol_short!("dep_rm"),), &offering);
         Ok(())
     }
 
@@ -172,7 +172,6 @@ impl RevenueDepositContract {
             .get(&DataKey::Period(period_id))
             .ok_or(ContractError::PeriodNotFound)?;
 
-        Self::assert_period_open(&env, &period)?;
         period.revenue_amount =
             period.revenue_amount.checked_add(amount).ok_or(ContractError::Overflow)?;
         env.storage().persistent().set(&DataKey::Period(period_id), &period);
