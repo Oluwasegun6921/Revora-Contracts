@@ -383,13 +383,8 @@ pub enum RevoraError {
     OracleQuoteStale = 91,
     /// A redemption request overlaps an existing pending redemption window.
     RedemptionWindowOverlap = 92,
-    /// The provided issuer signers do not meet the offering's configured quorum
-    /// (or the primary issuer is missing from the signer set). Unique signers
-    /// are counted; repeating the same address does not raise the count.
-    QuorumNotReached = 93,
-    /// `register_offering` was given co-issuers that are duplicated or that
-    /// include the primary issuer.
-    InvalidCoIssuers = 94,
+    /// Invalid dispute resolution (e.g. attempting to resolve to Open).
+    InvalidDisputeResolution = 93,
 }
 
 pub mod tax_bucket;
@@ -10954,6 +10949,7 @@ impl RevoraRevenueShare {
     /// - [`RevoraError::NotDisputeIssuer`] if the caller is not the dispute's offering issuer.
     /// - [`RevoraError::DisputeNotFound`] if no dispute with the given ID exists.
     /// - [`RevoraError::DisputeAlreadyResolved`] if the dispute is not `Open`.
+    /// - [`RevoraError::InvalidDisputeResolution`] if `resolution` is `DisputeStatus::Open`.
     pub fn resolve_dispute(
         env: Env,
         caller: Address,
@@ -10961,6 +10957,10 @@ impl RevoraRevenueShare {
         resolution: DisputeStatus,
     ) -> Result<(), RevoraError> {
         caller.require_auth();
+
+        if resolution == DisputeStatus::Open {
+            return Err(RevoraError::InvalidDisputeResolution);
+        }
 
         let mut dispute: Dispute = env
             .storage()
@@ -10977,7 +10977,14 @@ impl RevoraRevenueShare {
 
         let was_critical = dispute.severity == DisputeSeverity::Critical;
         dispute.status = resolution;
-        env.storage().persistent().set(&DataKey3::Dispute(dispute_id), &dispute);
+        env.storage().persistent().set(&DataKey3::Dispute(dispute_id.clone()), &dispute);
+
+        // Decrement open dispute count for holder
+        let count_key = DataKey3::DisputeCount(dispute.offering_id.clone(), dispute.holder.clone());
+        let count: u32 = env.storage().persistent().get(&count_key).unwrap_or(0);
+        if count > 0 {
+            env.storage().persistent().set(&count_key, &(count - 1));
+        }
 
         // Decrement critical dispute count and emit freeze_off when it hits zero
         if was_critical {
@@ -10989,11 +10996,16 @@ impl RevoraRevenueShare {
                 if new_count == 0 {
                     env.events().publish(
                         (EVENT_DISPUTE_FREEZE_OFF,),
-                        (dispute.offering_id, dispute.holder, dispute.id),
+                        (dispute.offering_id.clone(), dispute.holder.clone(), dispute.id.clone()),
                     );
                 }
             }
         }
+
+        env.events().publish(
+            (EVENT_DISPUTE_RESOLVE,),
+            (dispute.offering_id, dispute.holder, dispute_id, resolution),
+        );
 
         Ok(())
     }
