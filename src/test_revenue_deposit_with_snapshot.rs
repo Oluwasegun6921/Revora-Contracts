@@ -20,7 +20,7 @@
 //! | snapshots never enabled                     | `SnapshotNotEnabled`, no state      |
 //! | snapshots disabled after a deposit          | `SnapshotNotEnabled`, ref kept      |
 //! | caller is not the offering issuer           | `SnapshotNotEnabled`, no state      |
-//! | finalization required, unfinalized ref      | `SnapshotNotFinalized`, no state    |
+//! | offering frozen                             | `OfferingFrozen`, no state change   |
 
 #![cfg(test)]
 
@@ -293,10 +293,10 @@ fn deposit_with_snapshot_rejects_when_snapshots_are_disabled() {
 }
 
 #[test]
-fn deposit_with_snapshot_rejects_unfinalized_reference_when_finalization_required() {
+fn deposit_with_snapshot_rejects_when_offering_is_frozen() {
     let (_env, client, issuer, token, payment_token) = setup();
     client.set_snapshot_config(&issuer, &namespace(), &token, &true);
-    client.set_snapshot_finalization_required(&issuer, &true);
+    client.freeze_offering(&issuer, &namespace(), &token);
 
     let result = client.try_deposit_revenue_with_snapshot(
         &issuer,
@@ -308,10 +308,7 @@ fn deposit_with_snapshot_rejects_unfinalized_reference_when_finalization_require
         &1,
     );
 
-    assert!(matches!(
-        result.err(),
-        Some(Ok(RevoraError::SnapshotNotFinalized))
-    ));
+    assert!(matches!(result.err(), Some(Ok(RevoraError::OfferingFrozen))));
     assert_eq!(client.get_last_snapshot_ref(&issuer, &namespace(), &token), 0);
 }
 
