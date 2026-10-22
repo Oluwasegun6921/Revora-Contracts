@@ -383,8 +383,8 @@ pub enum RevoraError {
     OracleQuoteStale = 91,
     /// A redemption request overlaps an existing pending redemption window.
     RedemptionWindowOverlap = 92,
-    /// The voter has zero voting weight in the pinned snapshot and cannot cast a vote.
-    NoVotingWeight = 94,
+    /// Payment-token precision cannot change after an offering is funded.
+    DecimalsLocked = 93,
 }
 
 pub mod tax_bucket;
@@ -3785,6 +3785,20 @@ impl RevoraRevenueShare {
         env.storage().persistent().get::<DataKey, Address>(&pt_key)
     }
 
+    /// Validate precision when the token exposes readable decimals metadata.
+    fn validate_payment_token_decimals(
+        env: &Env,
+        payment_token: &Address,
+        decimals: u32,
+    ) -> Result<(), RevoraError> {
+        if let Ok(on_chain_decimals) = token::Client::new(env, payment_token).try_decimals() {
+            if on_chain_decimals != Ok(decimals) {
+                return Err(RevoraError::DecimalsMismatch);
+            }
+        }
+        Ok(())
+    }
+
     /// Internal helper for revenue deposits.
     /// Validates amount using the Negative Amount Validation Matrix (#163).
     fn do_deposit_revenue(
@@ -3856,36 +3870,13 @@ impl RevoraRevenueShare {
             }
         }
 
-        // Preflight every accrual index update before the token transfer or any
-        // persistent write. The transaction is atomic, but rejecting here keeps
-        // the failure boundary explicit and prevents an overflow from being
-        // hidden behind a later storage mutation.
         let decimals = Self::get_payment_token_decimals(
             env.clone(),
-            offering_id.issuer.clone(),
-            offering_id.namespace.clone(),
-            offering_id.token.clone(),
+            issuer.clone(),
+            namespace.clone(),
+            token.clone(),
         );
-        let normalized = Self::normalize_amount_checked(amount, decimals)?;
-        let acc_delta_e18 = Self::accrual_delta_e18(normalized)?;
-        let global_acc_key = DataKey2::GlobalAccPerShareE18(offering_id.clone());
-        let current_acc: i128 = env.storage().persistent().get(&global_acc_key).unwrap_or(0);
-        let next_acc =
-            current_acc.checked_add(acc_delta_e18).ok_or(RevoraError::ArithmeticOverflow)?;
-
-        let total_share_bps: u32 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::HolderShareTotal(offering_id.clone()))
-            .unwrap_or(0);
-        let next_accrual = if total_share_bps > 0 {
-            let delta = Self::checked_accrual_delta_e18(normalized, total_share_bps as i128)?;
-            let key = DataKey::AccrualIndexE18(offering_id.clone());
-            let current: i128 = env.storage().persistent().get(&key).unwrap_or(0);
-            Some((key, current.checked_add(delta).ok_or(RevoraError::ArithmeticOverflow)?))
-        } else {
-            None
-        };
+        Self::validate_payment_token_decimals(env, &payment_token, decimals)?;
 
         // Transfer tokens from issuer to contract
         let contract_addr = env.current_contract_address();
@@ -9111,12 +9102,14 @@ impl RevoraRevenueShare {
     ///
     /// ### Security
     /// - Only the offering issuer may configure decimals.
-    /// - Misconfigured decimals directly affect payout arithmetic; issuers must supply
-    ///   the on-chain token's actual decimal value.
+    /// - Precision is immutable after funding so historical payouts cannot be rescaled.
+    /// - Readable payout token metadata must match the configured precision.
     ///
     /// ### Errors
     /// - `RevoraError::NotAuthorized` if caller is not the issuer.
     /// - `RevoraError::LimitReached` if `decimals > 18`.
+    /// - `RevoraError::DecimalsLocked` once a payment token is locked or a period exists.
+    /// - `RevoraError::DecimalsMismatch` if readable token metadata differs.
     pub fn set_payment_token_decimals(
         env: Env,
         issuer: Address,
@@ -9136,10 +9129,24 @@ impl RevoraRevenueShare {
         }
         Self::require_issuer_quorum_auth(&env, &offering.issuers, &signers)?;
 
-        let offering_id =
-            Self::canonical_offering_id(&env, issuer.clone(), namespace.clone(), token.clone());
-        env.storage().persistent().set(&DataKey2::PaymentTokenDecimals(offering_id), &decimals);
-        env.events().publish((EVENT_DECIMAL_SET, issuer, namespace, token), decimals);
+        let offering_id = OfferingId {
+            issuer: issuer.clone(),
+            namespace: namespace.clone(),
+            token: token.clone(),
+        };
+        let period_count = Self::get_period_count_internal(&env, &offering_id);
+        if env.storage().persistent().has(&DataKey::PaymentToken(offering_id.clone()))
+            || period_count > 0
+        {
+            return Err(RevoraError::DecimalsLocked);
+        }
+        Self::validate_payment_token_decimals(&env, &offering.payout_asset, decimals)?;
+        let decimals_key = DataKey2::PaymentTokenDecimals(offering_id);
+        let old_decimals: u32 =
+            env.storage().persistent().get(&decimals_key).unwrap_or(STELLAR_CANONICAL_DECIMALS);
+        env.storage().persistent().set(&decimals_key, &decimals);
+        env.events()
+            .publish((EVENT_DECIMAL_SET, issuer, namespace, token), (old_decimals, decimals));
         Ok(())
     }
 
