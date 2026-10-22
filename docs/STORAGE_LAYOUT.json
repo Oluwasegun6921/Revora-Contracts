@@ -410,6 +410,13 @@
     },
     {
       "module": "revora_revenue_share",
+      "key": "DataKey3::CanonicalIssuer(OfferingId)",
+      "value_type": "Address",
+      "ownership": "offering",
+      "version": 6
+    },
+    {
+      "module": "revora_revenue_share",
       "key": "DataKey3::ClassPayOrder(OfferingId, u64)",
       "value_type": "Vec<ShareClass>",
       "ownership": "offering+period",
@@ -1162,20 +1169,6 @@
       "key": "DeferredDataKey::DeferredReports(u32)",
       "value_type": "i128",
       "ownership": "period",
-      "version": 6
-    },
-    {
-      "module": "revora_revenue_share",
-      "key": "FreezeDataKey::HolderAuthority(OfferingId, Address, FreezeReason)",
-      "value_type": "FreezeAuthority",
-      "ownership": "offering+holder+reason",
-      "version": 6
-    },
-    {
-      "module": "revora_revenue_share",
-      "key": "FreezeDataKey::OfferingAuthority(OfferingId)",
-      "value_type": "FreezeAuthority",
-      "ownership": "offering",
       "version": 6
     },
     {

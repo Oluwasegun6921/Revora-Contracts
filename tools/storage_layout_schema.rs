@@ -213,6 +213,8 @@ const CORE_LAYOUT: &[StorageLayoutEntry] = storage_layout_entries!("revora_reven
     ("DataKey3::ProcessedAttestationHash(BytesN<32>)", "bool", "attestation"),
     ("DataKey3::EmitV2Compat", "bool", "contract"),
     ("DataKey3::RemainingBasis(OfferingId, Address)", "i128", "offering+holder"),
+    // ── Issuer-transfer identity keys ──
+    ("DataKey3::CanonicalIssuer(OfferingId)", "Address", "offering"),
     ("DataKey::OfferingRoyaltyBps(OfferingId, Address)", "u32", "offering+asset"),
     ("DataKey::SnapshotHolderShare(OfferingId, u64, Address)", "u32", "offering+snapshot+holder"),
     ("MigrationDataKey::MigrationResumeCursor(Address)", "MigrationCursor", "issuer"),
